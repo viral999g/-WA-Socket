@@ -3,7 +3,6 @@ import json
 import time
 import binascii
 from Crypto import Random
-
 try:
     import thread
 except ImportError:
@@ -15,9 +14,7 @@ def authProcess(ws, user_mobile):
     ws.send(json.dumps(request_body))
 
 def on_message(ws, message):
-    if "q" in message:
-        data = json.loads(message[2:])
-        print(data)
+    print("message", message)
 
 
 def on_error(ws, error):
@@ -33,19 +30,13 @@ def on_close(ws):
 def sendTextMessage(ws, to_user, message):
     messageId = "3EB0"+str(binascii.hexlify(Random.get_random_bytes(8)).upper().decode("utf-8"))
     request_body = ["action", {"add": "relay"}, [{"message": {"conversation": message}, "key": {
-        "remoteJid": to_user, "fromMe": True, "id": messageId}, "messageTimestamp": str(int(time.time()))}]]
-    ws.send(json.dumps(request_body))
-
-def sendTextMessageToGroup(ws, to_group, message):
-    messageId = "3EB0"+str(binascii.hexlify(Random.get_random_bytes(8)).upper().decode("utf-8"))
-    request_body = ["action", {"add": "relay"}, [{"message": {"conversation": message}, "key": {
-        "remoteJid": to_group, "fromMe": True, "id": messageId}, "messageTimestamp": str(int(time.time()))}]]
+        "remoteJid": to_user, "id": messageId}, "messageTimestamp": str(int(time.time()))}]]
     ws.send(json.dumps(request_body))
 
 def on_open(ws):
     def run(*args):
-        authProcess(ws, "917069852821")
-        sendTextMessageToGroup(ws, "917069852821-1566557065@g.us", "Test msg Group")
+        authProcess(ws, "919428284313")
+        sendTextMessage(ws, "917069852821@s.whatsapp.com", "test msg 2")
         print("thread terminating...")
     thread.start_new_thread(run, ())
 
