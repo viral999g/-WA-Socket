@@ -15,9 +15,8 @@ def authProcess(ws, user_mobile):
     ws.send(json.dumps(request_body))
 
 def on_message(ws, message):
-    if "q" in message:
-        data = json.loads(message[2:])
-        print(data)
+    print(message)
+
 
 
 def on_error(ws, error):
@@ -42,10 +41,13 @@ def sendTextMessageToGroup(ws, to_group, message):
         "remoteJid": to_group, "fromMe": True, "id": messageId}, "messageTimestamp": str(int(time.time()))}]]
     ws.send(json.dumps(request_body))
 
+
+
 def on_open(ws):
     def run(*args):
         authProcess(ws, "917069852821")
-        sendTextMessageToGroup(ws, "917069852821-1566557065@g.us", "Test msg Group")
+        # sendTextMessageToGroup(ws, "917069852821-1566557065@g.us", "Test msg Group")
+        sendTextMessage(ws, "919428284313@s.whatsapp.com", "Test msg")
         print("thread terminating...")
     thread.start_new_thread(run, ())
 

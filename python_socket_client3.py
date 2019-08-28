@@ -3,6 +3,7 @@ import json
 import time
 import binascii
 from Crypto import Random
+
 try:
     import thread
 except ImportError:
@@ -14,7 +15,8 @@ def authProcess(ws, user_mobile):
     ws.send(json.dumps(request_body))
 
 def on_message(ws, message):
-    print("message", message)
+    print(message)
+
 
 
 def on_error(ws, error):
@@ -30,24 +32,22 @@ def on_close(ws):
 def sendTextMessage(ws, to_user, message):
     messageId = "3EB0"+str(binascii.hexlify(Random.get_random_bytes(8)).upper().decode("utf-8"))
     request_body = ["action", {"add": "relay"}, [{"message": {"conversation": message}, "key": {
-        "remoteJid": to_user, "id": messageId}, "messageTimestamp": str(int(time.time()))}]]
+        "remoteJid": to_user, "fromMe": True, "id": messageId}, "messageTimestamp": str(int(time.time()))}]]
+    ws.send(json.dumps(request_body))
+
+def sendTextMessageToGroup(ws, to_group, message):
+    messageId = "3EB0"+str(binascii.hexlify(Random.get_random_bytes(8)).upper().decode("utf-8"))
+    request_body = ["action", {"add": "relay"}, [{"message": {"conversation": message}, "key": {
+        "remoteJid": to_group, "fromMe": True, "id": messageId}, "messageTimestamp": str(int(time.time()))}]]
     ws.send(json.dumps(request_body))
 
 def on_open(ws):
     def run(*args):
-        authProcess(ws, "919428284313")
-        # sendTextMessage(ws, "917069852821@s.whatsapp.com", "test msg 2")
-        sendMessageReceipt2(ws)
+        authProcess(ws, "917069852822")
+        sendTextMessageToGroup(ws, "917069852821-1566557065@g.us", "Test msg Group")
+        # sendTextMessage(ws, "919428284313@s.whatsapp.com", "Test msg")
         print("thread terminating...")
     thread.start_new_thread(run, ())
-
-def sendMessageReceipt(ws):
-    request_body = ["Msg", {"from": "917069852821@c.us", "ack": 2, "cmd": "ack","to": "919428284313@c.us", "id": "3EB027D1A58F4678EF8D", "t": str(int(time.time()))}]
-    ws.send(json.dumps(request_body))
-
-def sendMessageReceipt2(ws):
-    request_body = ["MsgInfo", {"from": "917069852821@c.us", "ack": 2, "cmd": "ack","to": "917069852821-1566557065@g.us", "participant": "919428284313@sc.us" , "id": "3EB0F517CDA590E6B488", "t": str(int(time.time()))}]
-    ws.send(json.dumps(request_body))
 
 
 def on_auth(ws):
