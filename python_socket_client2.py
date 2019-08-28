@@ -37,12 +37,12 @@ def on_open(ws):
     def run(*args):
         authProcess(ws, "919428284313")
         # sendTextMessage(ws, "917069852821@s.whatsapp.com", "test msg 2")
-        sendMessageReceipt2(ws)
+        sendMessageReceipt(ws)
         print("thread terminating...")
     thread.start_new_thread(run, ())
 
 def sendMessageReceipt(ws):
-    request_body = ["Msg", {"from": "917069852821@c.us", "ack": 2, "cmd": "ack","to": "919428284313@c.us", "id": "3EB027D1A58F4678EF8D", "t": str(int(time.time()))}]
+    request_body = ["Msg", {"from": "917069852821@c.us", "ack": 2, "cmd": "ack","to": "919428284313@c.us", "id": "3EB0A1ED1B05362823BC", "t": str(int(time.time()))}]
     ws.send(json.dumps(request_body))
 
 def sendMessageReceipt2(ws):
@@ -56,7 +56,7 @@ def on_auth(ws):
 
 if __name__ == "__main__":
     websocket.enableTrace(True)
-    ws = websocket.WebSocketApp("ws://localhost:9011/",
+    ws = websocket.WebSocketApp("ws://13.59.213.80:9011/",
                                 on_message=on_message,
                                 on_error=on_error,
                                 on_close=on_close)

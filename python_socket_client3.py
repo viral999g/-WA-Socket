@@ -56,7 +56,7 @@ def on_auth(ws):
 
 if __name__ == "__main__":
     websocket.enableTrace(True)
-    ws = websocket.WebSocketApp("ws://localhost:9011/",
+    ws = websocket.WebSocketApp("ws://13.59.213.80:9011/",
                                 on_message=on_message,
                                 on_error=on_error,
                                 on_close=on_close)

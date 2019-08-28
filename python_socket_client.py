@@ -41,13 +41,46 @@ def sendTextMessageToGroup(ws, to_group, message):
         "remoteJid": to_group, "fromMe": True, "id": messageId}, "messageTimestamp": str(int(time.time()))}]]
     ws.send(json.dumps(request_body))
 
+def createGroup(ws):
+    ts =  str(int(time.time()))
+    request_body = [
+  "Chat",
+  {
+    "cmd": "action",
+    "data": [
+      "create",
+      "917069852821@c.us",
+      {
+        "admins": [
+          "917069852821@c.us"
+        ],
+        "creation": ts,
+        "regulars": [
+          "919428284313@c.us",
+          "917069852822@c.us"
+        ],
+        "s_o": "917069852821@c.us",
+        "s_t": ts,
+        "subject": "New Group 4",
+        "superadmins": [
+          "917069852821@c.us"
+        ]
+      }
+    ],
+    "id": "917069852821-" + str(ts) + "@g.us"
+  }
+]
+
+    ws.send(json.dumps(request_body))
+
 
 
 def on_open(ws):
     def run(*args):
         authProcess(ws, "917069852821")
         # sendTextMessageToGroup(ws, "917069852821-1566557065@g.us", "Test msg Group")
-        sendTextMessage(ws, "919428284313@s.whatsapp.com", "Test msg")
+        # sendTextMessage(ws, "919428284313@s.whatsapp.com", "Test msg")
+        createGroup(ws)
         print("thread terminating...")
     thread.start_new_thread(run, ())
 

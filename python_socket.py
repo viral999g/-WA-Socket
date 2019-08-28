@@ -5,13 +5,15 @@ from __future__ import print_function
 from SimpleWebSocketServer import SimpleWebSocketServer, WebSocket
 import traceback, json, time, os, sys, pymongo
 from Crypto import Random
+import binascii
+from Crypto import Random
 
 sys.dont_write_bytecode = True
 # reload(sys)
 # sys.setdefaultencoding("utf-8")
 clientInstances = {}
 
-files_dir = "/media/viral999g/G/Projects/WA_socket/client_files/"
+files_dir = "/home/bharat/Downloads/WA_socket/client_files/"
 
 MYCLIENT = pymongo.MongoClient("mongodb://localhost:27017/",
                             connect=False)
@@ -25,9 +27,6 @@ class WhatsAppWeb(WebSocket):
     client_file = None
     client_tempfile = None
     def sendJSON(self, obj, tag):
-        if "from" not in obj:
-            obj["from"] = "backend"
-        # print("sending " + json.dumps(obj))
         self.sendMessage("[" + tag + "," + json.dumps(obj) + "]")
 
     def sendError(self, reason, tag):
@@ -40,6 +39,14 @@ class WhatsAppWeb(WebSocket):
             clientInstances[receiverJid].sendJSON(message, "action")
 
         self.appendToFile(receiverJid, message, "action")
+
+    def sendToReceiverJson(self, receiverJid, message, tag):
+        message = "{'add': 'relay'}," + json.dumps(message)
+
+        if receiverJid in clientInstances:
+            clientInstances[receiverJid].sendJSON(message, tag)
+
+        self.appendToFile(receiverJid, message, tag)
     
     def appendToFile(self,receiverJid, message, tag):
         file = open(files_dir + receiverJid + ".txt", "a+")
@@ -66,6 +73,103 @@ class WhatsAppWeb(WebSocket):
     def get_number(self, jid):
         at_the_rate_index = jid.find("@")
         return jid[0:at_the_rate_index]
+
+    def add_members_in_group(self, gjid, participants, receivers, adder):
+        add_member_message =[
+            {
+                "add" : "relay"
+            },
+            [
+                {
+                    "key" :
+                    {
+                        "fromMe" : True,
+                        "id" : str(binascii.hexlify(Random.get_random_bytes(8)).upper().decode("utf-8")),
+                        "remoteJid" : gjid
+                    }
+                    ,
+                    "messageStubParameters" : participants
+                    ,
+                    "messageStubType" : "GROUP_PARTICIPANT_ADD",
+                    "messageTimestamp" : str(int(time.time())),
+                    "participant" : adder
+                }
+            ]
+        ]
+
+        for r in receivers:
+            self.sendToReceiverJson(r, add_member_message[1], "action")
+
+
+    def create_new_group(self, request):
+        imp_data = request[1]['data']
+        creator = imp_data[1]
+        gjid = request[1]['id']
+        group_data = imp_data[2]
+        creation_ts = group_data['creation']
+
+        admins = group_data['admins']
+        super_admins = group_data['superadmins']
+        regulars = group_data['regulars']
+        subject = group_data['subject']
+
+        participants = []
+        for participant in regulars:
+            level = 0
+            participants.append([self.get_number(participant), level])
+
+        for participant in super_admins:
+            level = 2
+            participants.append([self.get_number(participant), level])                   
+    
+        GROUPSCOLL.insert({"gjid": gjid, "subject": subject, "participants": participants, "creator": self.get_number(creator), "creation_ts": creation_ts, "admins": admins, "superadmins": super_admins, "icon": "", "group_desc": "", "invite_url": "", "flag_group_info": 0, "flag_send_messages": 0})
+
+        encryption_key_message = [
+            {
+                "add" : "relay"
+            },
+            [
+            {
+                "key" :
+                {
+                    "fromMe" : True,
+                    "id" : str(binascii.hexlify(Random.get_random_bytes(8)).upper().decode("utf-8")),
+                    "remoteJid" : gjid
+                }
+                ,
+                "messageStubType" : "E2E_ENCRYPTED",
+                "messageTimestamp" : str(int(time.time()))
+            }
+            ]
+        ]
+
+        group_create_action_message = [
+            {
+                "add" : "relay"
+            },
+            [
+            {
+                "key" :
+                {
+                    "fromMe" : True,
+                    "id" : str(binascii.hexlify(Random.get_random_bytes(8)).upper().decode("utf-8")),
+                    "remoteJid" : gjid
+                }
+                ,
+                "messageStubType" : "GROUP_CREATE",
+                "messageTimestamp" : str(int(time.time())),
+                "participant" : self.get_number(creator) + "@s.whatsapp.net"
+            }
+            ]
+        ]
+
+        request.pop(0)
+        for participant in participants:
+            self.sendToReceiverJson(participant[0], encryption_key_message[1], "action")
+            self.sendToReceiverJson(participant[0], request, "Chat")
+            self.sendToReceiverJson(participant[0], group_create_action_message[1], "action")
+            if participant[0] != self.get_number(creator):
+                self.add_members_in_group(gjid, [participant[0] + "@s.whatsapp.net"], [participant[0]], self.get_number(creator) + "@s.whatsapp.net")
 
 
     def handleMessage(self):
@@ -122,6 +226,12 @@ class WhatsAppWeb(WebSocket):
             elif request[0] == "Msg" or request[0] == "MsgInfo" and request[1]['cmd'] == 'ack':
                 send_to = request[1]
                 self.sendMessageReceiptData(send_to, request[0])
+
+
+            elif request[0] == "Chat" and request[1]['cmd'] == 'action' and request[1]['data'][0] == 'create':
+               self.create_new_group(request) 
+
+
 
                     
                 
