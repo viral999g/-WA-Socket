@@ -27,7 +27,7 @@ class WhatsAppWeb(WebSocket):
     client_file = None
     client_tempfile = None
     def sendJSON(self, obj, tag):
-        self.sendMessage("[" + tag + "," + json.dumps(obj) + "]")
+        self.sendMessage("['" + tag + "'," + json.dumps(obj) + "]")
 
     def sendError(self, reason, tag):
         print("sending error: " + reason)
@@ -50,7 +50,7 @@ class WhatsAppWeb(WebSocket):
     
     def appendToFile(self,receiverJid, message, tag):
         file = open(files_dir + receiverJid + ".txt", "a+")
-        file.write("," + "[" + tag + "," + str(message) + "]")
+        file.write("," + "['" + tag + "'," + str(message) + "]")
 
     def sendMessageReceipt(self, from_client, to_client, flag, message_id, participant):
         message_json = {
@@ -73,6 +73,53 @@ class WhatsAppWeb(WebSocket):
     def get_number(self, jid):
         at_the_rate_index = jid.find("@")
         return jid[0:at_the_rate_index]
+
+    def send_encryption_key_message(self, gjid, participant):
+        encryption_key_message = [
+            {
+                "add" : "relay"
+            },
+            [
+            {
+                "key" :
+                {
+                    "fromMe" : True,
+                    "id" : str(binascii.hexlify(Random.get_random_bytes(8)).upper().decode("utf-8")),
+                    "remoteJid" : gjid
+                }
+                ,
+                "messageStubType" : "E2E_ENCRYPTED",
+                "messageTimestamp" : str(int(time.time()))
+            }
+            ]
+        ]
+
+        self.sendToReceiverJson(participant, encryption_key_message[1], "action")
+
+    def send_group_create_action_message(self, gjid, participant, creator):
+        group_create_action_message = [
+            {
+                "add" : "relay"
+            },
+            [
+            {
+                "key" :
+                {
+                    "fromMe" : True,
+                    "id" : str(binascii.hexlify(Random.get_random_bytes(8)).upper().decode("utf-8")),
+                    "remoteJid" : gjid
+                }
+                ,
+                "messageStubType" : "GROUP_CREATE",
+                "messageTimestamp" : str(int(time.time())),
+                "participant" : self.get_number(creator) + "@s.whatsapp.net"
+            }
+            ]
+        ]
+
+        self.sendToReceiverJson(participant, group_create_action_message[1], "action")
+        
+
 
     def add_members_in_group(self, gjid, participants, receivers, adder):
         add_member_message =[
@@ -124,53 +171,75 @@ class WhatsAppWeb(WebSocket):
     
         GROUPSCOLL.insert({"gjid": gjid, "subject": subject, "participants": participants, "creator": self.get_number(creator), "creation_ts": creation_ts, "admins": admins, "superadmins": super_admins, "icon": "", "group_desc": "", "invite_url": "", "flag_group_info": 0, "flag_send_messages": 0})
 
-        encryption_key_message = [
-            {
-                "add" : "relay"
-            },
-            [
-            {
-                "key" :
-                {
-                    "fromMe" : True,
-                    "id" : str(binascii.hexlify(Random.get_random_bytes(8)).upper().decode("utf-8")),
-                    "remoteJid" : gjid
-                }
-                ,
-                "messageStubType" : "E2E_ENCRYPTED",
-                "messageTimestamp" : str(int(time.time()))
-            }
-            ]
-        ]
+        
 
-        group_create_action_message = [
-            {
-                "add" : "relay"
-            },
-            [
-            {
-                "key" :
-                {
-                    "fromMe" : True,
-                    "id" : str(binascii.hexlify(Random.get_random_bytes(8)).upper().decode("utf-8")),
-                    "remoteJid" : gjid
-                }
-                ,
-                "messageStubType" : "GROUP_CREATE",
-                "messageTimestamp" : str(int(time.time())),
-                "participant" : self.get_number(creator) + "@s.whatsapp.net"
-            }
-            ]
-        ]
+       
 
         request.pop(0)
         for participant in participants:
-            self.sendToReceiverJson(participant[0], encryption_key_message[1], "action")
+            self.send_encryption_key_message(gjid, participant[0])
             self.sendToReceiverJson(participant[0], request, "Chat")
-            self.sendToReceiverJson(participant[0], group_create_action_message[1], "action")
+            self.send_group_create_action_message(gjid, participant[0], creator)
             if participant[0] != self.get_number(creator):
                 self.add_members_in_group(gjid, [participant[0] + "@s.whatsapp.net"], [participant[0]], self.get_number(creator) + "@s.whatsapp.net")
 
+    def add_members_in_group_process(self, request):
+        imp_data = request[1]['data']
+        adder = imp_data[1]
+        gjid = request[1]['id']
+
+        get_group_info = GROUPSCOLL.find_one({"gjid": gjid})
+        if get_group_info != None and adder in get_group_info['admins']:
+            creator = get_group_info['creator']
+            participants_added = imp_data[2]['participants']
+            participants = []
+            for p in participants_added:
+                participant_arr = [self.get_number(p), 0]
+                participants.append(participant_arr)
+                GROUPSCOLL.update({"gjid": gjid}, {"$push": {"participants": participant_arr}})
+            request.pop(0)
+            for participant in participants:
+                self.send_encryption_key_message(gjid, participant[0])
+                self.sendNewGroupToReceiver(participant[0], adder, gjid, "Chat")
+                self.send_group_create_action_message(gjid, participant[0], creator)
+                if participant[0] != self.get_number(creator):
+                    self.add_members_in_group(gjid, [participant[0] + "@s.whatsapp.net"], [participant[0]], self.get_number(creator) + "@s.whatsapp.net")
+
+    def sendNewGroupToReceiver(self, participant, adder,gjid, tag):
+        group_info = GROUPSCOLL.find_one({"gjid": gjid})
+        regulars = []
+        for p in group_info['participants']:
+            if p[1] == 1:
+                regulars.append(p[0] + "@c.us")
+
+        message_body = [
+        "Chat",
+            {
+            "cmd" : "action",
+            "data" :
+            [
+                "introduce",
+                adder,
+                {
+                    "admins" :group_info['admins'],
+                    "creation" : group_info['creation_ts'],
+                    "desc" : group_info['group_desc'],
+                    "descId" : "",
+                    "descOwner" : "",
+                    "descTime" : None,
+                    "regulars" : regulars,
+                    "s_o" :  group_info['creator'] + "@c.us",
+                    "s_t" : group_info['creation_ts'],
+                    "subject" : group_info['subject'],
+                    "superadmins" : group_info['superadmins']
+                }
+            ]
+            ,
+            "id" : gjid
+            }
+        ]
+
+        self.sendToReceiverJson(participant, message_body, "Chat")
 
     def handleMessage(self):
         try:
@@ -215,13 +284,13 @@ class WhatsAppWeb(WebSocket):
                     self.sendMessageReceipt(self.client_remoteJid, receiver_number, 1, message_id, "")
                 elif "@g.us" in receiverJid:
                     send_to[0]["participant"] = self.client_remoteJid + "@s.whatsapp.net"
-                    participants = GROUPSCOLL.find_one({"remoteJid": receiverJid})["participants"]
-            
-                    for p in participants:
-                        if p != self.client_remoteJid:
-                            self.sendToReceiver(p, send_to)
+                    participants = GROUPSCOLL.find_one({"gjid": receiverJid})["participants"]
+                    if [self.client_remoteJid, 0] in participants or [self.client_remoteJid, 1] in participants or [self.client_remoteJid, 2] in participants:
+                        for p in participants:
+                            if p[0] != self.client_remoteJid:
+                                self.sendToReceiver(p[0], send_to)
 
-                    self.sendMessageReceipt(self.client_remoteJid, receiverJid, 1, message_id, "")
+                        self.sendMessageReceipt(self.client_remoteJid, receiverJid, 1, message_id, "")
 
             elif request[0] == "Msg" or request[0] == "MsgInfo" and request[1]['cmd'] == 'ack':
                 send_to = request[1]
@@ -230,6 +299,9 @@ class WhatsAppWeb(WebSocket):
 
             elif request[0] == "Chat" and request[1]['cmd'] == 'action' and request[1]['data'][0] == 'create':
                self.create_new_group(request) 
+
+            elif request[0] == "Chat" and request[1]['cmd'] == 'action' and request[1]['data'][0] == 'add':
+               self.add_member_in_group(request)
 
 
 
