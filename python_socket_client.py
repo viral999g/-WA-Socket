@@ -14,6 +14,10 @@ def authProcess(ws, user_mobile):
     request_body = ["auth", {"type": "new"}, {"remoteJid":remoteJid}]
     ws.send(json.dumps(request_body))
 
+def signup(ws):
+    request_body = ["register", {"remoteJid": "919428284313@s.whatsapp.com", "username": "Viral", "eurl": "https://www.google.com"}]
+    ws.send(json.dumps(request_body))
+
 def on_message(ws, message):
     print(message)
 
@@ -60,50 +64,69 @@ def addmember(ws):
                     ]
                 }
             ],
-            "id" : "917069852821-1567074911@g.us"
+            "id" : "917069852821-1569845878@g.us"
         }
     ]
 
+    ws.send(json.dumps(request_body))
+
+
 def createGroup(ws):
     ts =  str(int(time.time()))
-    request_body = [
-  "Chat",
-  {
-    "cmd": "action",
-    "data": [
-      "create",
-      "917069852821@c.us",
-      {
-        "admins": [
-          "917069852821@c.us"
-        ],
-        "creation": ts,
-        "regulars": [
-          "919428284313@c.us",
-          "917069852822@c.us"
-        ],
-        "s_o": "917069852821@c.us",
-        "s_t": ts,
-        "subject": "New Group 4",
-        "superadmins": [
-          "917069852821@c.us"
-        ]
-      }
-    ],
-    "id": "917069852821-" + str(ts) + "@g.us"
-  }
-]
+#     request_body = [
+#   "Chat",
+#   {
+#     "cmd": "action",
+#     "data": [
+#       "create",
+#       "917069852821@c.us",
+#       {
+#         "admins": [
+#           "917069852821@c.us"
+#         ],
+#         "creation": ts,
+#         "regulars": [
+#           "919428284313@c.us",
+#           "917069852822@c.us"
+#         ],
+#         "s_o": "917069852821@c.us",
+#         "s_t": ts,
+#         "subject": "New Group 4",
+#         "superadmins": [
+#           "917069852821@c.us"
+#         ]
+#       }
+#     ],
+#     "id": "917069852821-" + str(ts) + "@g.us"
+#   }
+# ]
+    request_body = [ 'Chat',
+      { 'cmd': 'action',
+        'data':
+         [ 'create',
+           '917984674050@c.us',
+           { 'admins': [ '917984674050@c.us' ],
+             'creation': '1570041312857',
+             'regulars': [ '919428284313@c.us', '917069852822@c.us' ],
+             's_o': '917984674050@c.us',
+             's_t': '1570041312857',
+             'subject': 'Jei',
+             'superadmins': [ '917069852821@c.us' ] } ],
+        'id': '917984674050-1570041312858@g.us' } 
+      ]
 
-    ws.send(json.dumps(request_body))
+    ws.send('["Chat",{"cmd":"action","data":["create","917984674050@c.us",{"admins":["917984674050@c.us"],"creation":1570688533356,"regulars":["917984674050@c.us","919687031045@c.us"],"s_o":"917984674050@c.us","s_t":1570688533356,"subject":"qwerty","superadmins":["917984674050@c.us"]}],"id":"917984674050-1570688533356@g.us"}]')
 
 
 
 def on_open(ws):
     def run(*args):
-        authProcess(ws, "917069852821")
-        sendTextMessageToGroup(ws, "917069852821-1567074911@g.us", "Test msg Group")
+        authProcess(ws, "917984674050")
+        # sendTextMessageToGroup(ws, "917069852821-1567074911@g.us", "Test msg Group")
         # sendTextMessage(ws, "919428284313@s.whatsapp.com", "Test msg")
         # createGroup(ws)
+        # addmember(ws)
+        signup(ws)
         print("thread terminating...")
     thread.start_new_thread(run, ())
 

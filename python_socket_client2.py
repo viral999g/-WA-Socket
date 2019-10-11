@@ -37,7 +37,8 @@ def on_open(ws):
     def run(*args):
         authProcess(ws, "919428284313")
         # sendTextMessage(ws, "917069852821@s.whatsapp.com", "test msg 2")
-        sendMessageReceipt(ws)
+        # sendMessageReceipt(ws)
+        sendMessageReceipt2(ws)
         print("thread terminating...")
     thread.start_new_thread(run, ())
 

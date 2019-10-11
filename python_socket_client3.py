@@ -41,11 +41,16 @@ def sendTextMessageToGroup(ws, to_group, message):
         "remoteJid": to_group, "fromMe": True, "id": messageId}, "messageTimestamp": str(int(time.time()))}]]
     ws.send(json.dumps(request_body))
 
+def getGroupData(ws):
+    request_body = ["query", "GroupMetadata", "917069852821-1569838085@g.us"]
+    ws.send(json.dumps(request_body))  
+
 def on_open(ws):
     def run(*args):
-        authProcess(ws, "917069852822")
-        sendTextMessageToGroup(ws, "917069852821-1566557065@g.us", "Test msg Group")
+        authProcess(ws, "919971033011")
+        # sendTextMessageToGroup(ws, "917069852821-1569838085@g.us", "Test msg Group")
         # sendTextMessage(ws, "919428284313@s.whatsapp.com", "Test msg")
+        getGroupData(ws)
         print("thread terminating...")
     thread.start_new_thread(run, ())
 
@@ -56,7 +61,7 @@ def on_auth(ws):
 
 if __name__ == "__main__":
     websocket.enableTrace(True)
-    ws = websocket.WebSocketApp("ws://13.59.213.80:9011/",
+    ws = websocket.WebSocketApp("ws://localhost:9011/",
                                 on_message=on_message,
                                 on_error=on_error,
                                 on_close=on_close)
