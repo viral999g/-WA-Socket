@@ -347,6 +347,31 @@ class WhatsAppWeb(WebSocket):
         USERSCOLL.insert(user_obj)
         del user_obj["_id"]
         self.sendJSON([temp_user_obj], "registered")
+        self.appendToFile(self.client_remoteJid, [temp_user_obj], "registered")
+
+
+    def find_user_in_collection(self, mobile_no):
+        data = USERSCOLL.find_one({"mobile_no": mobile_no})
+        return data
+
+    def send_Contact(self, user_jid):
+        user_obj = {}
+        mobile_no = self.get_number(user_jid)
+        get_user_data = self.find_user_in_collection(mobile_no)
+
+        if get_user_data != None:
+            user_obj['profile_pic'] = get_user_data['profile_pic']
+            user_obj['username'] = get_user_data['username']
+            user_obj['status'] = get_user_data['status']
+
+            response_body = [user_jid, user_obj]
+
+        else:
+            response_body = [user_jid, None]
+
+        self.sendJSON(response_body, "UserMetadata")
+        self.appendToFile(self.client_remoteJid, response_body, "UserMetadata")
+
 
 
 
@@ -358,11 +383,12 @@ class WhatsAppWeb(WebSocket):
                 user_data = request[1]
                 remote_jid = user_data['remoteJid']
                 mobile_no = self.get_number(remote_jid)
-                username = user_data['username']
-
-                find_user = USERSCOLL.find_one({"mobile_no": mobile_no})
+                find_user = self.find_user_in_collection(mobile_no)
                 if find_user == None:
                     self.register_user(user_data)
+                else:
+                    del find_user["_id"]
+                    self.sendJSON([find_user], "registered")
             if request[0] == "auth":
                 if request[1]['type'] == "new":
                     temp_client_remoteJid = request[2]['remoteJid']
@@ -424,15 +450,21 @@ class WhatsAppWeb(WebSocket):
                 send_to = request[1]
                 self.sendMessageReceiptData(send_to, request[0])
 
-            elif request[0] == "Chat" and request[1]['cmd'] == 'action' and request[1]['data'][0] == 'create':
-                self.create_new_group(request)
+            elif request[0] == "Chat" and request[1]['cmd'] == 'action':
+                if request[1]['data'][0] == 'create':
+                    self.create_new_group(request)
+                elif request[1]['data'][0] == 'add':
+                    self.add_members_in_group_process(request)
 
-            elif request[0] == "Chat" and request[1]['cmd'] == 'action' and request[1]['data'][0] == 'add':
-                self.add_members_in_group_process(request)
-
-            elif request[0] == "query" and request[1] == 'GroupMetadata':
-                group_id = request[2]
-                self.get_group_data(group_id)
+            elif request[0] == "query":
+                query_type = request[1]
+                if query_type == 'GroupMetadata':
+                    group_id = request[2]
+                    self.get_group_data(group_id)
+                elif query_type == 'UserMetadata':
+                    user_jid = request[2]
+                    self.send_Contact(user_jid)
+                
 
             elif request[0] == "update":
                 data = request[1]
