@@ -15,7 +15,12 @@ def authProcess(ws, user_mobile):
     ws.send(json.dumps(request_body))
 
 def signup(ws):
-    request_body = ["register", {"remoteJid": "919428284313@s.whatsapp.com", "username": "Viral", "eurl": "https://www.google.com"}]
+    for i in range(0, 4):
+        request_body = ["register", {"remoteJid": "91942828431" + str(i) + "@s.whatsapp.com", "username": "User " + str(i), "eurl": ""}]
+        ws.send(json.dumps(request_body))
+
+def checkContact(ws):
+    request_body = ["query", "UserMetadata", "919428284312@s.whatsapp.com"]
     ws.send(json.dumps(request_body))
 
 def on_message(ws, message):
@@ -117,16 +122,31 @@ def createGroup(ws):
 
     ws.send('["Chat",{"cmd":"action","data":["create","917984674050@c.us",{"admins":["917984674050@c.us"],"creation":1570688533356,"regulars":["917984674050@c.us","919687031045@c.us"],"s_o":"917984674050@c.us","s_t":1570688533356,"subject":"qwerty","superadmins":["917984674050@c.us"]}],"id":"917984674050-1570688533356@g.us"}]')
 
+def update_pp(ws):
+    request_body = ["update", {"type": "picture", "jid": "919428284312@s.whatsapp.com", "eurl": "http://www.google.com", "tag": str(int(time.time()))}]
+    ws.send(json.dumps(request_body))
+
+def update_status(ws):
+    request_body = ["update", {"type": "status", "jid": "919428284312@s.whatsapp.com", "text": "Busy", "tag": str(int(time.time()))}]
+    ws.send(json.dumps(request_body))
+
+def update_username(ws):
+    request_body = ["update", {"type": "username", "jid": "919428284312@s.whatsapp.com", "text": "New username", "tag": str(int(time.time()))}]
+    ws.send(json.dumps(request_body))
 
 
 def on_open(ws):
     def run(*args):
-        authProcess(ws, "917984674050")
+        authProcess(ws, "919428284312")
         # sendTextMessageToGroup(ws, "917069852821-1567074911@g.us", "Test msg Group")
         # sendTextMessage(ws, "919428284313@s.whatsapp.com", "Test msg")
         # createGroup(ws)
         # addmember(ws)
-        signup(ws)
+        # signup(ws)
+        # checkContact(ws)
+        update_pp(ws)
+        update_status(ws)
+        update_username(ws)
         print("thread terminating...")
     thread.start_new_thread(run, ())
 

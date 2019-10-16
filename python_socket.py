@@ -321,12 +321,12 @@ class WhatsAppWeb(WebSocket):
         if profile_pic_url == '':
             profile_pic = {
                 "eurl": "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png",
-                "last_updated_at": ts
+                "last_updated_ts": ts
             }
         else:
             profile_pic = {
                 "eurl": profile_pic_url,
-                "last_updated_at": ts
+                "last_updated_ts": ts
             }
 
         status = {
@@ -366,12 +366,80 @@ class WhatsAppWeb(WebSocket):
 
             response_body = [user_jid, user_obj]
 
+            USERSCOLL.update_one({"mobile_no": mobile_no}, {"$addToSet": {"subscribers_pp": self.client_remoteJid, "subscribers_status": self.client_remoteJid, "subscribers_ls": self.client_remoteJid, "subscribers_username": self.client_remoteJid}})
+
         else:
             response_body = [user_jid, None]
 
         self.sendJSON(response_body, "UserMetadata")
         self.appendToFile(self.client_remoteJid, response_body, "UserMetadata")
 
+    def update_picture_user(self, data):
+        jid = data['jid']
+        eurl = data['eurl']
+        tag = data['tag']
+
+        USERSCOLL.update_one({"remote_jid": jid}, {"$set": {"profile_pic.eurl": eurl, "profile_pic.last_updated_ts": int(tag)}})
+        get_pp_subscribers = USERSCOLL.find_one({"remote_jid": jid})
+        if 'subscribers_pp' in get_pp_subscribers:
+            pp_update_obj = {'jid': jid, 'eurl': eurl}
+            for i in get_pp_subscribers['subscribers_pp']:
+                if i in clientInstances:
+                    clientInstances[i].sendJSON([pp_update_obj], 'ProfilePicThumbnail')
+                self.appendToFile(i, [pp_update_obj], "ProfilePicThumbnail")
+
+        self.sendJSON([pp_update_obj], 'ProfilePicThumbnail')
+        self.appendToFile(self.client_remoteJid, [pp_update_obj], "ProfilePicThumbnail")
+
+
+    def update_status_user(self, data):
+        jid = data['jid']
+        status = data['text']
+        tag = data['tag']
+
+        USERSCOLL.update_one({"remote_jid": jid}, {"$set": {"status.text": status, "status.last_updated_ts": int(tag)}})
+        get_status_subscribers = USERSCOLL.find_one({"remote_jid": jid})
+        if 'subscribers_status' in get_status_subscribers:
+            status_update_obj = {'jid': jid, 'text': status}
+            for i in get_status_subscribers['subscribers_status']:
+                if i in clientInstances:
+                    clientInstances[i].sendJSON([status_update_obj], 'Status')
+                self.appendToFile(i, [status_update_obj], "Status")
+
+        self.sendJSON([status_update_obj], 'Status')
+        self.appendToFile(self.client_remoteJid, [status_update_obj], "Status")
+    
+    def update_username(self, data):
+        jid = data['jid']
+        username = data['text']
+        tag = data['tag']
+
+        USERSCOLL.update_one({"remote_jid": jid}, {"$set": {"username.username_text": username, "username.last_updated_ts": int(tag)}})        
+        get_username_subscribers = USERSCOLL.find_one({"remote_jid": jid})        
+        if 'subscribers_username' in get_username_subscribers:
+            status_update_obj = {'jid': jid, 'text': username}
+            for i in get_username_subscribers['subscribers_username']:
+                if i in clientInstances:
+                    clientInstances[i].sendJSON([status_update_obj], 'Username')
+                self.appendToFile(i, [status_update_obj], "Username")
+
+        self.sendJSON([status_update_obj], 'Username')
+        self.appendToFile(self.client_remoteJid, [status_update_obj], "Username")
+
+
+    def update_picture_group(self, data):
+        jid = data['jid']
+        eurl = data['eurl']
+        tag = data['tag']
+
+        GROUPSCOLL.update_one({"gjid": jid}, {"$set": {"icon": eurl}})
+        get_pp_subscribers = GROUPSCOLL.find_one({"gjid": jid})
+        if 'subscribers_pp' in get_pp_subscribers:
+            pp_update_obj = {'jid': jid, 'eurl': eurl}
+            for i in get_pp_subscribers['subscribers_pp']:
+                if i in clientInstances:
+                    clientInstances[i].sendJSON([pp_update_obj], 'ProfilePicThumbnail')
+                self.appendToFile(i, [pp_update_obj], "ProfilePicThumbnail")
 
 
 
@@ -471,10 +539,14 @@ class WhatsAppWeb(WebSocket):
                 type = data['type']
                 if type == 'picture':
                     jid = data['jid']
-                    eurl = data['eurl']
-                    tag = data['tag']
-
-                    # user_data = 
+                    if '@s.whatsapp.com' in jid:
+                        self.update_picture_user(data)
+                elif type == 'status':
+                    jid = data['jid']
+                    self.update_status_user(data)
+                elif type == 'username':
+                    jid = data['jid']
+                    self.update_username(data)
 
         except:
             print(traceback.format_exc())
