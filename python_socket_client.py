@@ -134,19 +134,41 @@ def update_username(ws):
     request_body = ["update", {"type": "username", "jid": "919428284312@s.whatsapp.com", "text": "New username", "tag": str(int(time.time()))}]
     ws.send(json.dumps(request_body))
 
+def remove_users(ws):
+    request_body = [ 
+        "Chat", 
+        {
+            "cmd" : "action",
+            "data" : [ 
+                "remove", 
+                "919428284313@c.us", 
+                {
+                    "participants" : [ 
+                        "919428284313@c.us"
+                    ]
+                }
+            ],
+            "id" : "917069852821-1569835829@g.us"
+        }
+    ]
+
+    ws.send(json.dumps(request_body))
+
+
 
 def on_open(ws):
     def run(*args):
-        authProcess(ws, "919428284312")
+        authProcess(ws, "919428284313")
         # sendTextMessageToGroup(ws, "917069852821-1567074911@g.us", "Test msg Group")
         # sendTextMessage(ws, "919428284313@s.whatsapp.com", "Test msg")
         # createGroup(ws)
         # addmember(ws)
         # signup(ws)
         # checkContact(ws)
-        update_pp(ws)
-        update_status(ws)
-        update_username(ws)
+        # update_pp(ws)
+        # update_status(ws)
+        # update_username(ws)
+        remove_users(ws)
         print("thread terminating...")
     thread.start_new_thread(run, ())
 

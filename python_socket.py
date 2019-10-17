@@ -171,6 +171,56 @@ class WhatsAppWeb(WebSocket):
             self.sendToReceiverJson(self.get_number(
                 r), add_member_message[1], "action")
 
+    def remove_members_from_group_message(self, gjid, participants, receivers, remover):
+        add_member_message = [
+            {
+                "add": "relay"
+            },
+            [
+                {
+                    "key":
+                    {
+                        "fromMe": True,
+                        "id": str(binascii.hexlify(Random.get_random_bytes(8)).upper().decode("utf-8")),
+                        "remoteJid": gjid
+                    },
+                    "messageStubParameters": participants,
+                    "messageStubType": "GROUP_PARTICIPANT_REMOVE",
+                    "messageTimestamp": str(int(time.time())),
+                    "participant": remover
+                }
+            ]
+        ]
+
+        for r in receivers:
+            self.sendToReceiverJson(self.get_number(
+                r), add_member_message[1], "action")
+
+    def member_leaves_group_message(self, gjid, participants, receivers, remover):
+        add_member_message = [
+            {
+                "add": "relay"
+            },
+            [
+                {
+                    "key":
+                    {
+                        "fromMe": True,
+                        "id": str(binascii.hexlify(Random.get_random_bytes(8)).upper().decode("utf-8")),
+                        "remoteJid": gjid
+                    },
+                    "messageStubParameters": participants,
+                    "messageStubType": "GROUP_PARTICIPANT_LEAVE",
+                    "messageTimestamp": str(int(time.time())),
+                    "participant": remover
+                }
+            ]
+        ]
+
+        for r in receivers:
+            self.sendToReceiverJson(self.get_number(
+                r), add_member_message[1], "action")
+
     def create_new_group(self, request):
         print(request)
         imp_data = request[1]['data']
@@ -236,6 +286,35 @@ class WhatsAppWeb(WebSocket):
                 p_temp for p_temp in get_group_info['participants'] if p_temp not in participants]
             self.add_members_in_group(
                 gjid, p_added, receivers_a, self.get_number(adder) + "@s.whatsapp.net")
+    def remove_members_from_group(self, request):
+        imp_data = request[1]['data']
+        remover = imp_data[1]
+        gjid = request[1]['id']
+
+        if self.client_remoteJid in remover:
+
+            get_group_info = GROUPSCOLL.find_one({"gjid": gjid})
+            if get_group_info != None:
+                participants_removed = imp_data[2]['participants']
+
+                if remover == participants_removed[0]:
+                    participants = []
+                    for p in participants_removed:
+                        if p in get_group_info['participants']:
+                            participants.append(p.replace("@c.us", "@s.whatsapp.net"))
+                            GROUPSCOLL.update(
+                                {"gjid": gjid}, {"$pull": {"participants": p, "admins": p}})
+                    request.pop(0)
+                    self.member_leaves_group_message(gjid, participants,get_group_info['participants'], remover.replace("@c.us", "@s.whatsapp.net"))
+                elif remover in get_group_info['admins']:
+                    participants = []
+                    for p in participants_removed:
+                        if p in get_group_info['participants']:
+                            participants.append(p.replace("@c.us", "@s.whatsapp.net"))
+                            GROUPSCOLL.update(
+                                {"gjid": gjid}, {"$pull": {"participants": p, "admins": p}})
+                    request.pop(0)
+                    self.remove_members_from_group_message(gjid, participants,get_group_info['participants'], remover.replace("@c.us", "@s.whatsapp.net"))
 
     def sendNewGroupToReceiver(self, participant, adder, gjid, tag):
         group_info = GROUPSCOLL.find_one({"gjid": gjid})
@@ -523,6 +602,9 @@ class WhatsAppWeb(WebSocket):
                     self.create_new_group(request)
                 elif request[1]['data'][0] == 'add':
                     self.add_members_in_group_process(request)
+                elif request[1]['data'][0] == 'remove':
+                    self.remove_members_from_group(request)
+
 
             elif request[0] == "query":
                 query_type = request[1]
